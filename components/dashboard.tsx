@@ -28,6 +28,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import AuthForm from "@/components/auth-form";
 import Link from "next/link";
+import { Toaster } from "./ui/toaster";
 
 export default function Dashboard() {
   const [habitData, setHabitData] = useState({
@@ -69,10 +70,22 @@ export default function Dashboard() {
       const previous = habits[habits.length - 2];
 
       setPercentages({
-        sleep: calculatePercentageChange(Number(latest.sleep), Number(previous.sleep)),
-        calories: calculatePercentageChange(Number(latest.calories), Number(previous.calories)),
-        exercise: calculatePercentageChange(Number(latest.exercise), Number(previous.exercise)),
-        water: calculatePercentageChange(Number(latest.water), Number(previous.water)),
+        sleep: calculatePercentageChange(
+          Number(latest.sleep),
+          Number(previous.sleep)
+        ),
+        calories: calculatePercentageChange(
+          Number(latest.calories),
+          Number(previous.calories)
+        ),
+        exercise: calculatePercentageChange(
+          Number(latest.exercise),
+          Number(previous.exercise)
+        ),
+        water: calculatePercentageChange(
+          Number(latest.water),
+          Number(previous.water)
+        ),
       });
     }
   }, [habits]);
@@ -94,15 +107,58 @@ export default function Dashboard() {
   const logHabit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/habits", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(habitData),
-      });
-      if (!response.ok) throw new Error("Failed to log habit");
+      const existingHabit = habits.find(
+        (habit) =>
+          new Date(habit.date).toLocaleDateString() ===
+          new Date(habitData.date).toLocaleDateString()
+      );
+
+      if (existingHabit) {
+        // Update existing habit
+        const updatedHabit = {
+          ...existingHabit,
+          sleep: habitData.sleep
+            ? String(Number(existingHabit.sleep) + Number(habitData.sleep))
+            : existingHabit.sleep,
+          calories: habitData.calories
+            ? String(
+                Number(existingHabit.calories) + Number(habitData.calories)
+              )
+            : existingHabit.calories,
+          exercise: habitData.exercise
+            ? String(
+                Number(existingHabit.exercise) + Number(habitData.exercise)
+              )
+            : existingHabit.exercise,
+          water: habitData.water
+            ? String(Number(existingHabit.water) + Number(habitData.water))
+            : existingHabit.water,
+        };
+
+        const response = await fetch(`/api/habits`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(updatedHabit),
+        });
+
+        if (!response.ok) throw new Error("Failed to update habit");
+      } else {
+        // Create new habit
+        const response = await fetch("/api/habits", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(habitData),
+        });
+
+        if (!response.ok) throw new Error("Failed to log habit");
+      }
+
       await fetchHabits();
       setHabitData({
         date: new Date().toISOString(),
@@ -171,13 +227,12 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen flex-col px-6">
+      <Toaster />
       <header className="sticky px-8 top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center">
           <div className="mr-4 hidden md:flex">
             <Link className="mr-6 flex items-center space-x-2" href="/">
-              <span className="hidden font-bold sm:inline-block">
-                TrackIt
-              </span>
+              <span className="hidden font-bold sm:inline-block">TrackIt</span>
             </Link>
             <nav className="flex items-center space-x-6 text-sm font-medium">
               <Link
@@ -349,40 +404,66 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent className="pl-2">
                     <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={habits}>
+                      <LineChart
+                        data={habits.map((h) => ({
+                          date: new Date(h.date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "2-digit",
+                            year: "numeric",
+                          }),
+                          sleep: Number(h.sleep),
+                          calories: Number(h.calories),
+                          exercise: Number(h.exercise),
+                          water: Number(h.water),
+                        }))}
+                      >
                         <CartesianGrid
                           strokeDasharray="3 3"
                           strokeOpacity={0.2}
                         />
                         <XAxis dataKey="date" />
-                        <YAxis />
+                        <YAxis yAxisId="left" domain={[0, 150]} />
+                        <YAxis yAxisId="sleep" domain={[0, 24]} />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          domain={[0, 1000]}
+                        />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend content={<CustomLegend />} />
                         <Line
+                          yAxisId="sleep"
                           type="monotone"
                           dataKey="sleep"
                           stroke="#EE6C4D"
+                          strokeWidth={2}
                           dot={{ r: 4 }}
                           activeDot={{ r: 6 }}
                         />
                         <Line
+                          yAxisId="right"
                           type="monotone"
                           dataKey="calories"
                           stroke="#82ca9d"
+                          strokeWidth={2}
                           dot={{ r: 4 }}
                           activeDot={{ r: 6 }}
                         />
                         <Line
+                          yAxisId="right"
                           type="monotone"
                           dataKey="exercise"
                           stroke="#ffc658"
+                          strokeWidth={2}
                           dot={{ r: 4 }}
                           activeDot={{ r: 6 }}
                         />
                         <Line
+                          yAxisId="left"
                           type="monotone"
                           dataKey="water"
                           stroke="#0273CD"
+                          strokeWidth={2}
                           dot={{ r: 4 }}
                           activeDot={{ r: 6 }}
                         />
@@ -426,19 +507,23 @@ export default function Dashboard() {
                 </Card>
                 <Card className="col-span-4 md:col-span-8">
                   <CardHeader className="flex flex-row justify-between gap-8 items-center">
-                  <div>
-                    <CardTitle>Health Tips</CardTitle>
-                    <CardDescription>
-                      Personalized tips based on your habits
-                    </CardDescription>
+                    <div>
+                      <CardTitle>Health Tips</CardTitle>
+                      <CardDescription>
+                        Personalized tips based on your habits
+                      </CardDescription>
                     </div>
-                     <Button className="!m-0" onClick={getHealthTips}>Get New Tips</Button>
+                    <Button className="!m-0" onClick={getHealthTips}>
+                      Get New Tips
+                    </Button>
                   </CardHeader>
-                 {tips && <CardContent>
-                    <pre className="text-sm text-muted-foreground text-wrap font-sans">
-                      {tips.trim()}
-                    </pre>
-                  </CardContent>}
+                  {tips && (
+                    <CardContent>
+                      <pre className="text-sm text-muted-foreground text-wrap font-sans">
+                        {tips.trim()}
+                      </pre>
+                    </CardContent>
+                  )}
                 </Card>
               </div>
             </TabsContent>
@@ -454,33 +539,33 @@ export default function Dashboard() {
                   <form onSubmit={logHabit} className="space-y-4">
                     <div className="flex flex-wrap gap-4 items-center jsutify-between w-full">
                       {Object.entries({
-                      sleep: "Sleep (hours)",
-                      calories: "Calories (cals)",
-                      exercise: "Exercise (minutes)",
-                      water: "Water (glasses)",
+                        sleep: "Sleep (hours)",
+                        calories: "Calories (cals)",
+                        exercise: "Exercise (minutes)",
+                        water: "Water (glasses)",
                       }).map(([key, label]) => (
-                      <div key={key} className="space-y-2">
-                        <label
-                        htmlFor={key}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                        {label}
-                        </label>
-                        <div className="flex items-center space-x-2">
-                        <Input
-                          className="!text-4xl font-bold p-2 py-8 max-w-[200px] w-fit"
-                          id={key}
-                          type="number"
-                          value={(habitData as any)[key]}
-                          onChange={(e) =>
-                          setHabitData((prev) => ({
-                            ...prev,
-                            [key]: e.target.value,
-                          }))
-                          }
-                        />
+                        <div key={key} className="space-y-2">
+                          <label
+                            htmlFor={key}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {label}
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <Input
+                              className="!text-4xl font-bold p-2 py-8 max-w-[200px] w-fit"
+                              id={key}
+                              type="number"
+                              value={(habitData as any)[key]}
+                              onChange={(e) =>
+                                setHabitData((prev) => ({
+                                  ...prev,
+                                  [key]: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
                         </div>
-                      </div>
                       ))}
                     </div>
                     <Button type="submit">Log Habits</Button>

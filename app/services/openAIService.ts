@@ -26,13 +26,31 @@ export async function getHealthTips(prompt: string) {
   return response.choices[0].text;
 }
 
-export async function getPersonalSuggestions(habits: {
-  sleep: string;
-  calories: string;
-  exercise: string;
-  water: string;
-}) {
-  const prompt = `Based on my habits like Sleep: ${habits.sleep}\nCalories: ${habits.calories}\nExercise: ${habits.exercise}\nWater: ${habits.water}, what are some personalized suggestions to improve my health?`;
+export async function getPersonalSuggestions(
+  habits: {
+    sleep: string;
+    calories: string;
+    exercise: string;
+    water: string;
+  }[]
+) {
+  const simplifiedHabits = habits.map((habit) => {
+    return {
+      sleep: habit.sleep,
+      calories: habit.calories,
+      exercise: habit.exercise,
+      water: habit.water,
+    };
+  });
+  const prompt = `Based on my habits like Sleep: ${simplifiedHabits
+    .map((habit) => habit.sleep)
+    .join(", ")}\nCalories: ${simplifiedHabits
+    .map((habit) => habit.calories)
+    .join(", ")}\nExercise: ${simplifiedHabits
+    .map((habit) => habit.exercise)
+    .join(", ")}\nWater: ${simplifiedHabits
+    .map((habit) => habit.water)
+    .join(", ")}, what are some personalized suggestions to improve my health?`;
   const response = await client.completions.create({
     model: "gpt-35-turbo-instruct",
     prompt: [prompt],

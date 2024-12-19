@@ -1,4 +1,4 @@
-import { addUserHabit, getUserHabits } from "@/app/services/cosmosDBService";
+import { addUserHabit, getUserHabits, updateUserHabit } from "@/app/services/cosmosDBService";
 import jwt from "jsonwebtoken";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -36,5 +36,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(habits, { status: 200 });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  const token = req.headers.get("authorization")?.split(" ")[1];
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const decoded: any = jwt.verify(token, jwtSecret);
+    const userId = decoded.userId;
+
+    const habit = { ...await req.json(), userId };
+    const updatedHabit = await updateUserHabit(habit);
+    return NextResponse.json(updatedHabit, { status: 200 });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: error instanceof Error ? 400 : 401 });
   }
 }

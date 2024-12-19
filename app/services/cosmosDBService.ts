@@ -38,14 +38,14 @@ export async function getUserHabits(userId: string): Promise<{
   exercise: string;
   calories: string;
   water: string;
-}> {
+}[]> {
   const container = await getContainer();
   const querySpec = {
     query: "SELECT * from c WHERE c.userId = @userId",
     parameters: [{ name: "@userId", value: userId }],
   };
   const { resources } = await container.items.query(querySpec).fetchAll();
-  return resources[0]
+  return resources;
 }
 
 export async function registerUser(username: string, password: string) {
@@ -71,4 +71,10 @@ export async function authenticateUser(username: string, password: string) {
     return { token, userId: user.id };
   }
   throw new Error("Authentication failed");
+}
+
+export async function updateUserHabit(habit: any) {
+  const container = await getContainer();
+  const { resource } = await container.item(habit.id).replace(habit);
+  return resource;
 }
