@@ -11,8 +11,12 @@ const jwtSecret = process.env.JWT_SECRET || "";
 const client = new CosmosClient({ endpoint, key });
 
 export async function getContainer() {
-  const { database } = await client.databases.createIfNotExists({ id: databaseId });
-  const { container } = await database.containers.createIfNotExists({ id: containerId });
+  const { database } = await client.databases.createIfNotExists({
+    id: databaseId,
+  });
+  const { container } = await database.containers.createIfNotExists({
+    id: containerId,
+  });
   return container;
 }
 
@@ -28,20 +32,29 @@ export async function addUserHabit(habit: {
   return resource;
 }
 
-export async function getUserHabits(userId: string) {
+export async function getUserHabits(userId: string): Promise<{
+  date: string;
+  sleep: string;
+  exercise: string;
+  calories: string;
+  water: string;
+}> {
   const container = await getContainer();
   const querySpec = {
     query: "SELECT * from c WHERE c.userId = @userId",
     parameters: [{ name: "@userId", value: userId }],
   };
   const { resources } = await container.items.query(querySpec).fetchAll();
-  return resources;
+  return resources[0]
 }
 
 export async function registerUser(username: string, password: string) {
   const container = await getContainer();
   const hashedPassword = await bcrypt.hash(password, 10);
-  const { resource } = await container.items.create({ username, password: hashedPassword });
+  const { resource } = await container.items.create({
+    username,
+    password: hashedPassword,
+  });
   return resource;
 }
 
@@ -53,8 +66,8 @@ export async function authenticateUser(username: string, password: string) {
   };
   const { resources } = await container.items.query(querySpec).fetchAll();
   const user = resources[0];
-  if (user && await bcrypt.compare(password, user.password)) {
-    const token = jwt.sign({ userId: user.id }, jwtSecret, { expiresIn: '1h' });
+  if (user && (await bcrypt.compare(password, user.password))) {
+    const token = jwt.sign({ userId: user.id }, jwtSecret, { expiresIn: "1h" });
     return { token, userId: user.id };
   }
   throw new Error("Authentication failed");
