@@ -31,7 +31,7 @@ export default function AuthForm({ setToken }: { setToken: (token: string) => vo
       }
     } catch (error) {
       if (error instanceof Error) {
-        toast({ title: "Authentication Error", description: error.message, variant: "destructive" })
+        toast({ title: "Authentication Error", description: (error as Error).message, variant: "destructive" })
       } else {
         toast({ title: "Authentication Error", description: "An unknown error occurred", variant: "destructive" })
       }

@@ -69,10 +69,10 @@ export default function Dashboard() {
       const previous = habits[habits.length - 2];
 
       setPercentages({
-        sleep: calculatePercentageChange(latest.sleep, previous.sleep),
-        calories: calculatePercentageChange(latest.calories, previous.calories),
-        exercise: calculatePercentageChange(latest.exercise, previous.exercise),
-        water: calculatePercentageChange(latest.water, previous.water),
+        sleep: calculatePercentageChange(Number(latest.sleep), Number(previous.sleep)),
+        calories: calculatePercentageChange(Number(latest.calories), Number(previous.calories)),
+        exercise: calculatePercentageChange(Number(latest.exercise), Number(previous.exercise)),
+        water: calculatePercentageChange(Number(latest.water), Number(previous.water)),
       });
     }
   }, [habits]);
@@ -115,7 +115,7 @@ export default function Dashboard() {
     } catch (error) {
       toast({
         title: "Error logging habit",
-        description: error.message,
+        description: (error as Error).message,
         variant: "destructive",
       });
     }
@@ -132,7 +132,7 @@ export default function Dashboard() {
     } catch (error) {
       toast({
         title: "Error fetching habits",
-        description: error.message,
+        description: (error as Error).message,
         variant: "destructive",
       });
     }
@@ -471,7 +471,7 @@ export default function Dashboard() {
                           className="!text-4xl font-bold p-2 py-8 max-w-[200px] w-fit"
                           id={key}
                           type="number"
-                          value={habitData[key]}
+                          value={(habitData as any)[key]}
                           onChange={(e) =>
                           setHabitData((prev) => ({
                             ...prev,
